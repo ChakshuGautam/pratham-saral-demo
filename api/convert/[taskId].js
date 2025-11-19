@@ -34,17 +34,32 @@ export default async function handler(req, res) {
   }
 
   try {
-    // First get record from database to get PDF URL
+    // First get record from database
     const sql = neon(process.env.DATABASE_URL);
     const dbRecords = await sql`
-      SELECT pdf_url, blob_url, status, result
+      SELECT pdf_url, blob_url, status, result, error
       FROM conversion_history
       WHERE task_id = ${taskId}
     `;
 
     const dbRecord = dbRecords[0];
 
-    // Call Structura API to get result
+    if (!dbRecord) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    // If result is already in database and completed/failed, return it directly
+    if (dbRecord.result && (dbRecord.status === 'completed' || dbRecord.status === 'failed')) {
+      return res.status(200).json({
+        status: dbRecord.status,
+        result: dbRecord.result,
+        error: dbRecord.error,
+        pdf_url: dbRecord.pdf_url,
+        blob_url: dbRecord.blob_url,
+      });
+    }
+
+    // Otherwise, call Structura API to get/update result
     const response = await fetch(
       `${STRUCTURA_BASE_URL}/api/v2/convert/${taskId}`,
       {
@@ -80,8 +95,8 @@ export default async function handler(req, res) {
     // Include PDF URL from database in response
     return res.status(200).json({
       ...data,
-      pdf_url: dbRecord?.pdf_url,
-      blob_url: dbRecord?.blob_url,
+      pdf_url: dbRecord.pdf_url,
+      blob_url: dbRecord.blob_url,
     });
   } catch (error) {
     console.error('Error fetching conversion result:', error);
