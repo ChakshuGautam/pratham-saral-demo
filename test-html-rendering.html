@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test HTML Rendering</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        .panel {
+            flex: 1;
+            border: 1px solid #ccc;
+            padding: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        h2 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Structura HTML Resolution Test</h1>
+    <div class="container">
+        <div class="panel">
+            <h2>Raw HTML (with content-refs)</h2>
+            <div id="raw-html"></div>
+        </div>
+        <div class="panel">
+            <h2>Resolved HTML</h2>
+            <div id="resolved-html"></div>
+        </div>
+    </div>
+
+    <script>
+        // Load the conversion result
+        fetch('/api/convert/1dce2437-207c-475a-8b98-cd7a2eb1efe1')
+            .then(res => res.json())
+            .then(data => {
+                console.log('Full data:', data);
+
+                const result = data.result;
+                if (!result || !result.children) {
+                    document.getElementById('raw-html').innerHTML = 'No result data';
+                    return;
+                }
+
+                // Get first page
+                const firstPage = result.children.find(child => child.block_type === 'Page');
+                console.log('First page:', firstPage);
+
+                // Show raw HTML
+                const rawHtml = document.createElement('pre');
+                rawHtml.textContent = firstPage.html;
+                rawHtml.style.whiteSpace = 'pre-wrap';
+                rawHtml.style.wordBreak = 'break-all';
+                document.getElementById('raw-html').appendChild(rawHtml);
+
+                // Create a map of all blocks by ID
+                const blockMap = {};
+                function buildBlockMap(node) {
+                    if (node.id) {
+                        blockMap[node.id] = node;
+                    }
+                    if (node.children) {
+                        node.children.forEach(buildBlockMap);
+                    }
+                }
+                buildBlockMap(result);
+
+                console.log('Block map:', Object.keys(blockMap).length, 'blocks');
+
+                // Resolve content-refs
+                function resolveContentRefs(html) {
+                    if (!html) return '';
+
+                    // Replace each content-ref with the actual HTML
+                    return html.replace(/<content-ref src='([^']+)'><\/content-ref>/g, (match, refId) => {
+                        const block = blockMap[refId];
+                        if (!block) {
+                            console.warn('Missing block:', refId);
+                            return '';
+                        }
+                        // Recursively resolve refs in the child block
+                        return resolveContentRefs(block.html);
+                    });
+                }
+
+                const resolvedHtml = resolveContentRefs(firstPage.html);
+                console.log('Resolved HTML length:', resolvedHtml.length);
+
+                document.getElementById('resolved-html').innerHTML = resolvedHtml;
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                document.getElementById('raw-html').innerHTML = 'Error: ' + err.message;
+            });
+    </script>
+</body>
+</html>

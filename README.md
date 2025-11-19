@@ -1,6 +1,87 @@
-# React + TypeScript + Vite
+# Pratham Demo App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A document viewer and PDF processing application built with React, TypeScript, and Vite. Features include viewing pre-processed documents with extracted tables and uploading new PDFs for processing via the Structura API.
+
+## Features
+
+- **Document Viewer**: View pre-processed documents (PDFs and images) with extracted table data
+- **PDF Upload & Processing**: Upload new PDFs and process them using the Structura API
+- **Table Extraction**: Automatically extracts and displays tables from documents
+- **Real-time Processing**: Polls for processing status and displays results when complete
+
+## Setup
+
+1. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+2. **Configure environment variables:**
+
+   Copy `.env.example` to `.env` and add your Structura API key:
+   ```bash
+   cp .env.example .env
+   ```
+
+   Edit `.env` and set your API key:
+   ```
+   STRUCTURA_API_KEY=your_actual_api_key_here
+   ```
+
+3. **Run the development server:**
+
+   To use the PDF upload feature, you need to run with Vercel Dev (to enable serverless functions):
+   ```bash
+   npm run dev:vercel
+   ```
+
+   For frontend-only development (without upload feature):
+   ```bash
+   npm run dev
+   ```
+
+## Project Structure
+
+```
+pratham-demo-app/
+├── api/                      # Vercel serverless functions
+│   ├── convert.ts            # Handles PDF upload to Structura API
+│   └── convert/[taskId].ts   # Polls for processing results
+├── public/
+│   ├── images/pratham/       # Image files
+│   ├── pdfs/pratham/         # PDF files
+│   └── pratham-tables.json   # Pre-processed table data
+├── src/
+│   ├── App.tsx               # Main app with navigation
+│   ├── ViewerPage.tsx        # Document viewer component
+│   └── UploadPage.tsx        # PDF upload component
+└── .env                      # Environment variables (create from .env.example)
+```
+
+## Usage
+
+### Document Viewer
+
+1. Navigate to the "Document Viewer" tab
+2. Select a document from the dropdown
+3. View the document on the left panel and extracted tables on the right
+
+### Upload PDF
+
+1. Navigate to the "Upload PDF" tab
+2. Click to select a PDF file
+3. Click "Upload & Process"
+4. Wait for processing to complete (typically 10-30 seconds)
+5. View extracted tables once processing is complete
+
+## API Integration
+
+The app uses the Structura API for PDF processing. The API calls are proxied through Vercel serverless functions to keep the API key secure:
+
+- `POST /api/convert` - Upload PDF for processing
+- `GET /api/convert/{taskId}` - Check processing status and get results
+
+## Development
 
 Currently, two official plugins are available:
 
