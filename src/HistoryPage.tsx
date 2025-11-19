@@ -177,32 +177,16 @@ const HistoryPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-3">
                         {item.status === 'completed' ? (
-                          <>
-                            <button
-                              onClick={() => navigate(`/result/${item.task_id}`)}
-                              className="text-blue-600 hover:text-blue-900 font-medium"
-                            >
-                              View Result
-                            </button>
-                            <button
-                              onClick={() => handleRerun(item)}
-                              className="text-orange-600 hover:text-orange-900 font-medium"
-                            >
-                              Rerun
-                            </button>
-                          </>
+                          <button
+                            onClick={() => navigate(`/result/${item.task_id}`)}
+                            className="text-blue-600 hover:text-blue-900 font-medium"
+                          >
+                            View Result
+                          </button>
                         ) : item.status === 'failed' ? (
-                          <>
-                            <span className="text-red-600 text-xs">
-                              {item.error || 'Conversion failed'}
-                            </span>
-                            <button
-                              onClick={() => handleRerun(item)}
-                              className="text-orange-600 hover:text-orange-900 font-medium ml-2"
-                            >
-                              Rerun
-                            </button>
-                          </>
+                          <span className="text-red-600 text-xs">
+                            {item.error || 'Conversion failed'}
+                          </span>
                         ) : (
                           <span className="text-blue-600 text-xs">Processing...</span>
                         )}
