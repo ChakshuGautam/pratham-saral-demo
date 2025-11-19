@@ -13,6 +13,7 @@ const ResultViewerPage: React.FC = () => {
   const [result, setResult] = useState<any>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [selectedBboxId, setSelectedBboxId] = useState<string | null>(null);
+  const [apiVersion, setApiVersion] = useState<string>('v2');
 
   useEffect(() => {
     if (taskId) {
@@ -42,6 +43,7 @@ const ResultViewerPage: React.FC = () => {
 
       setResult(data.result);
       setPdfUrl(data.blob_url || data.pdf_url);
+      setApiVersion(data.api_version || 'v2');
       setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load result');
@@ -159,30 +161,54 @@ const ResultViewerPage: React.FC = () => {
             <Panel minSize={20} defaultSize={50}>
               <div className="h-full flex flex-col bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="flex-1 overflow-auto p-6 bg-white">
-                  {result.children && result.children.length > 0 ? (
-                    <div className="space-y-8">
-                      {result.children.map((page: any, pageIndex: number) => {
-                        if (page.block_type !== 'Page') return null;
-
-                        return (
-                          <div key={page.id || pageIndex}>
+                  {apiVersion === 'v3' ? (
+                    // V3 API: Render HTML per page
+                    result && result.pages && Array.isArray(result.pages) ? (
+                      <div className="space-y-8">
+                        {result.pages.map((page: any, index: number) => (
+                          <div key={page.page || index}>
                             <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
-                              Page {pageIndex + 1}
+                              Page {page.page || index + 1}
                             </h3>
-                            <StructuredContentRenderer
-                              page={page}
-                              blockMap={blockMap}
-                              selectedBboxId={selectedBboxId}
-                              onBlockClick={handleBboxClick}
+                            <div
+                              className="prose max-w-none"
+                              dangerouslySetInnerHTML={{ __html: page.html }}
                             />
                           </div>
-                        );
-                      })}
-                    </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <p>No HTML content found</p>
+                      </div>
+                    )
                   ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <p>No content found</p>
-                    </div>
+                    // V2 API: Render structured JSON
+                    result.children && result.children.length > 0 ? (
+                      <div className="space-y-8">
+                        {result.children.map((page: any, pageIndex: number) => {
+                          if (page.block_type !== 'Page') return null;
+
+                          return (
+                            <div key={page.id || pageIndex}>
+                              <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">
+                                Page {pageIndex + 1}
+                              </h3>
+                              <StructuredContentRenderer
+                                page={page}
+                                blockMap={blockMap}
+                                selectedBboxId={selectedBboxId}
+                                onBlockClick={handleBboxClick}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <p>No content found</p>
+                      </div>
+                    )
                   )}
                 </div>
               </div>

@@ -37,7 +37,7 @@ export default async function handler(req, res) {
     // First get record from database
     const sql = neon(process.env.DATABASE_URL);
     const dbRecords = await sql`
-      SELECT pdf_url, blob_url, status, result, error
+      SELECT pdf_url, blob_url, status, result, error, api_version
       FROM conversion_history
       WHERE task_id = ${taskId}
     `;
@@ -48,6 +48,9 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Task not found' });
     }
 
+    const apiVersion = dbRecord.api_version || 'v2';
+    console.log('🔧 Fetching result for API version:', apiVersion);
+
     // If result is already in database and completed/failed, return it directly
     if (dbRecord.result && (dbRecord.status === 'completed' || dbRecord.status === 'failed')) {
       return res.status(200).json({
@@ -56,19 +59,21 @@ export default async function handler(req, res) {
         error: dbRecord.error,
         pdf_url: dbRecord.pdf_url,
         blob_url: dbRecord.blob_url,
+        api_version: apiVersion,
       });
     }
 
     // Otherwise, call Structura API to get/update result
-    const response = await fetch(
-      `${STRUCTURA_BASE_URL}/api/v2/convert/${taskId}`,
-      {
-        method: 'GET',
-        headers: {
-          'X-Api-Key': STRUCTURA_API_KEY,
-        },
-      }
-    );
+    const apiEndpoint = apiVersion === 'v3'
+      ? `${STRUCTURA_BASE_URL}/api/v3/convert/${taskId}`
+      : `${STRUCTURA_BASE_URL}/api/v2/convert/${taskId}`;
+
+    const response = await fetch(apiEndpoint, {
+      method: 'GET',
+      headers: {
+        'X-Api-Key': STRUCTURA_API_KEY,
+      },
+    });
 
     const data = await response.json();
 
@@ -97,6 +102,7 @@ export default async function handler(req, res) {
       ...data,
       pdf_url: dbRecord.pdf_url,
       blob_url: dbRecord.blob_url,
+      api_version: apiVersion,
     });
   } catch (error) {
     console.error('Error fetching conversion result:', error);

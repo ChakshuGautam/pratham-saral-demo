@@ -36,13 +36,26 @@ export default async function handler(req, res) {
   try {
     const sql = neon(process.env.DATABASE_URL);
 
+    // Get the api_version from the original task
+    const originalTask = await sql`
+      SELECT api_version FROM conversion_history WHERE task_id = ${taskId}
+    `;
+
+    const apiVersion = originalTask[0]?.api_version || 'v2';
+    console.log('🔧 Rerunning with API version:', apiVersion);
+
+    // Determine which API endpoint to use
+    const apiEndpoint = apiVersion === 'v3'
+      ? `${STRUCTURA_BASE_URL}/api/v3/convert`
+      : `${STRUCTURA_BASE_URL}/api/v2/convert`;
+
     // Trigger new conversion with Structura API using FormData
     const formData = new FormData();
     formData.append('pdf_url', pdfUrl);
     formData.append('output_format', 'json');
     formData.append('use_llm', 'true');
 
-    const response = await fetch(`${STRUCTURA_BASE_URL}/api/v2/convert`, {
+    const response = await fetch(apiEndpoint, {
       method: 'POST',
       headers: {
         'X-Api-Key': STRUCTURA_API_KEY,
@@ -71,8 +84,8 @@ export default async function handler(req, res) {
 
     // Insert new record while keeping the old one
     await sql`
-      INSERT INTO conversion_history (task_id, pdf_url, blob_url, status)
-      VALUES (${newTaskId}, ${pdfUrl}, ${pdfUrl}, 'processing')
+      INSERT INTO conversion_history (task_id, pdf_url, blob_url, status, api_version)
+      VALUES (${newTaskId}, ${pdfUrl}, ${pdfUrl}, 'processing', ${apiVersion})
     `;
 
     return res.status(200).json({

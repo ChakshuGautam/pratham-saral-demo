@@ -28,13 +28,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { blob_url, output_format = 'json', use_llm = 'true', pdf_hash } = req.body;
+    const { blob_url, output_format = 'json', use_llm = 'true', pdf_hash, api_version = 'v2' } = req.body;
 
     if (!blob_url) {
       return res.status(400).json({ error: 'No blob_url provided' });
     }
 
     console.log('📥 Processing PDF from Blob URL:', blob_url);
+    console.log('🔧 Using API version:', api_version);
 
     // Create FormData for the request
     const formData = new FormData();
@@ -47,8 +48,13 @@ export default async function handler(req, res) {
     console.log('  output_format:', output_format);
     console.log('  use_llm:', use_llm === 'true');
 
+    // Determine which API endpoint to use
+    const apiEndpoint = api_version === 'v3'
+      ? `${STRUCTURA_BASE_URL}/api/v3/convert`
+      : `${STRUCTURA_BASE_URL}/api/v2/convert`;
+
     // Generate curl command for debugging
-    const curlCommand = `curl -X POST '${STRUCTURA_BASE_URL}/api/v2/convert' \\
+    const curlCommand = `curl -X POST '${apiEndpoint}' \\
   -H 'X-Api-Key: ${STRUCTURA_API_KEY}' \\
   -F 'pdf_url=${blob_url}' \\
   -F 'output_format=${output_format}' \\
@@ -58,7 +64,7 @@ export default async function handler(req, res) {
     console.log(curlCommand);
 
     // Forward to Structura API with FormData
-    const response = await fetch(`${STRUCTURA_BASE_URL}/api/v2/convert`, {
+    const response = await fetch(apiEndpoint, {
       method: 'POST',
       headers: {
         'X-Api-Key': STRUCTURA_API_KEY,
@@ -82,11 +88,11 @@ export default async function handler(req, res) {
     try {
       const sql = neon(process.env.DATABASE_URL);
       await sql`
-        INSERT INTO conversion_history (task_id, pdf_url, blob_url, status, pdf_hash)
-        VALUES (${data.request_id}, ${blob_url}, ${blob_url}, 'processing', ${pdf_hash || null})
+        INSERT INTO conversion_history (task_id, pdf_url, blob_url, status, pdf_hash, api_version)
+        VALUES (${data.request_id}, ${blob_url}, ${blob_url}, 'processing', ${pdf_hash || null}, ${api_version})
         ON CONFLICT (task_id) DO NOTHING
       `;
-      console.log('💾 Saved to database');
+      console.log('💾 Saved to database with API version:', api_version);
     } catch (dbError) {
       console.error('Database save error:', dbError);
       // Don't fail the request if database save fails

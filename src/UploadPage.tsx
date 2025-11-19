@@ -17,6 +17,7 @@ const UploadPage: React.FC = () => {
   const [taskId, setTaskId] = useState<string | null>(null);
   const [result, setResult] = useState<ConversionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [apiVersion] = useState<'v2' | 'v3'>('v3'); // Default to v3 API
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -76,6 +77,7 @@ const UploadPage: React.FC = () => {
           output_format: 'json',
           use_llm: 'true',
           pdf_hash: pdfHash,
+          api_version: apiVersion,
         }),
       });
 

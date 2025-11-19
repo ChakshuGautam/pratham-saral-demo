@@ -35,7 +35,8 @@ export default async function handler(req, res) {
         error,
         created_at,
         updated_at,
-        pdf_hash
+        pdf_hash,
+        api_version
       FROM conversion_history
       ORDER BY created_at DESC
       LIMIT 100
@@ -50,7 +51,12 @@ export default async function handler(req, res) {
       // Check status of each processing task
       const updatePromises = processingTasks.map(async (task) => {
         try {
-          const response = await fetch(`${STRUCTURA_BASE_URL}/api/v2/convert/${task.task_id}`, {
+          const apiVersion = task.api_version || 'v2';
+          const apiEndpoint = apiVersion === 'v3'
+            ? `${STRUCTURA_BASE_URL}/api/v3/convert/${task.task_id}`
+            : `${STRUCTURA_BASE_URL}/api/v2/convert/${task.task_id}`;
+
+          const response = await fetch(apiEndpoint, {
             method: 'GET',
             headers: {
               'X-Api-Key': STRUCTURA_API_KEY,
@@ -105,7 +111,8 @@ export default async function handler(req, res) {
           error,
           created_at,
           updated_at,
-          pdf_hash
+          pdf_hash,
+          api_version
         FROM conversion_history
         ORDER BY created_at DESC
         LIMIT 100
