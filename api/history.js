@@ -32,7 +32,6 @@ export default async function handler(req, res) {
         pdf_url,
         blob_url,
         status,
-        result,
         error,
         created_at,
         updated_at,
@@ -78,11 +77,10 @@ export default async function handler(req, res) {
               WHERE task_id = ${task.task_id}
             `;
 
-            // Return updated task
+            // Return updated task (without result data)
             return {
               ...task,
               status: data.status,
-              result: data.result,
               error: data.error,
             };
           }
@@ -96,7 +94,7 @@ export default async function handler(req, res) {
 
       await Promise.all(updatePromises);
 
-      // Re-fetch history to get updated data
+      // Re-fetch history to get updated data (without result field)
       const updatedHistory = await sql`
         SELECT
           id,
@@ -104,7 +102,6 @@ export default async function handler(req, res) {
           pdf_url,
           blob_url,
           status,
-          result,
           error,
           created_at,
           updated_at,
