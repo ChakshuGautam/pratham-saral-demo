@@ -36,12 +36,6 @@ export default async function handler(req, res) {
   try {
     const sql = neon(process.env.DATABASE_URL);
 
-    // Delete the existing record
-    await sql`
-      DELETE FROM conversion_history
-      WHERE task_id = ${taskId}
-    `;
-
     // Trigger new conversion with Structura API
     const response = await fetch(`${STRUCTURA_BASE_URL}/api/v2/convert`, {
       method: 'POST',
@@ -62,10 +56,15 @@ export default async function handler(req, res) {
 
     const newTaskId = data.task_id;
 
-    // Insert new record into database
+    // Update existing record with new task_id and reset status
     await sql`
-      INSERT INTO conversion_history (task_id, pdf_url, blob_url, status)
-      VALUES (${newTaskId}, ${pdfUrl}, ${pdfUrl}, 'processing')
+      UPDATE conversion_history
+      SET task_id = ${newTaskId},
+          status = 'processing',
+          result = NULL,
+          error = NULL,
+          updated_at = NOW()
+      WHERE task_id = ${taskId}
     `;
 
     return res.status(200).json({
