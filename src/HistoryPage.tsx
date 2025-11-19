@@ -182,7 +182,7 @@ const HistoryPage: React.FC = () => {
                               onClick={() => navigate(`/result/${item.task_id}`)}
                               className="text-blue-600 hover:text-blue-900 font-medium"
                             >
-                              View Result →
+                              View Result
                             </button>
                             <button
                               onClick={() => handleRerun(item)}
