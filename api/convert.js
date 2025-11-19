@@ -82,27 +82,57 @@ export default async function handler(req, res) {
       return res.status(response.status).json(data);
     }
 
-    console.log('✅ Structura API accepted request. Request ID:', data.request_id);
+    // V3 API returns result directly, V2 API returns request_id for polling
+    if (api_version === 'v3') {
+      console.log('✅ V3 API returned direct result');
 
-    // Save to database
-    try {
-      const sql = neon(process.env.DATABASE_URL);
-      await sql`
-        INSERT INTO conversion_history (task_id, pdf_url, blob_url, status, pdf_hash, api_version)
-        VALUES (${data.request_id}, ${blob_url}, ${blob_url}, 'processing', ${pdf_hash || null}, ${api_version})
-        ON CONFLICT (task_id) DO NOTHING
-      `;
-      console.log('💾 Saved to database with API version:', api_version);
-    } catch (dbError) {
-      console.error('Database save error:', dbError);
-      // Don't fail the request if database save fails
+      // Generate a task ID for v3 results (using timestamp + random)
+      const taskId = `v3-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      // Save to database with completed status
+      try {
+        const sql = neon(process.env.DATABASE_URL);
+        await sql`
+          INSERT INTO conversion_history (task_id, pdf_url, blob_url, status, result, pdf_hash, api_version)
+          VALUES (${taskId}, ${blob_url}, ${blob_url}, 'completed', ${JSON.stringify(data)}, ${pdf_hash || null}, ${api_version})
+          ON CONFLICT (task_id) DO NOTHING
+        `;
+        console.log('💾 Saved v3 result to database with task_id:', taskId);
+      } catch (dbError) {
+        console.error('Database save error:', dbError);
+      }
+
+      // Return immediately with result
+      return res.status(200).json({
+        request_id: taskId,
+        status: 'completed',
+        result: data,
+        blob_url,
+      });
+    } else {
+      // V2 API - async processing
+      console.log('✅ Structura API accepted request. Request ID:', data.request_id);
+
+      // Save to database
+      try {
+        const sql = neon(process.env.DATABASE_URL);
+        await sql`
+          INSERT INTO conversion_history (task_id, pdf_url, blob_url, status, pdf_hash, api_version)
+          VALUES (${data.request_id}, ${blob_url}, ${blob_url}, 'processing', ${pdf_hash || null}, ${api_version})
+          ON CONFLICT (task_id) DO NOTHING
+        `;
+        console.log('💾 Saved to database with API version:', api_version);
+      } catch (dbError) {
+        console.error('Database save error:', dbError);
+        // Don't fail the request if database save fails
+      }
+
+      // Include blob URL in response
+      return res.status(202).json({
+        ...data,
+        blob_url
+      });
     }
-
-    // Include blob URL in response
-    return res.status(202).json({
-      ...data,
-      blob_url
-    });
   } catch (error) {
     console.error('❌ Error converting PDF:', error);
     return res.status(500).json({

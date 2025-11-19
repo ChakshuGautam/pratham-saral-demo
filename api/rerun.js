@@ -71,28 +71,49 @@ export default async function handler(req, res) {
       return res.status(response.status).json(data);
     }
 
-    // Structura returns task_id in the response
-    const newTaskId = data.task_id || data.request_id;
+    // V3 API returns result directly, V2 API returns request_id for polling
+    if (apiVersion === 'v3') {
+      console.log('✅ V3 API returned direct result');
 
-    if (!newTaskId) {
-      console.error('No task_id in Structura response:', data);
-      return res.status(500).json({
-        error: 'Failed to get task ID from Structura API',
-        response: data
+      // Generate a task ID for v3 results
+      const newTaskId = `v3-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      // Insert new record with completed status
+      await sql`
+        INSERT INTO conversion_history (task_id, pdf_url, blob_url, status, result, api_version)
+        VALUES (${newTaskId}, ${pdfUrl}, ${pdfUrl}, 'completed', ${JSON.stringify(data)}, ${apiVersion})
+      `;
+
+      return res.status(200).json({
+        message: 'Conversion completed',
+        task_id: newTaskId,
+        old_task_id: taskId,
+        status: 'completed',
+      });
+    } else {
+      // V2 API - async processing
+      const newTaskId = data.task_id || data.request_id;
+
+      if (!newTaskId) {
+        console.error('No task_id in Structura response:', data);
+        return res.status(500).json({
+          error: 'Failed to get task ID from Structura API',
+          response: data
+        });
+      }
+
+      // Insert new record while keeping the old one
+      await sql`
+        INSERT INTO conversion_history (task_id, pdf_url, blob_url, status, api_version)
+        VALUES (${newTaskId}, ${pdfUrl}, ${pdfUrl}, 'processing', ${apiVersion})
+      `;
+
+      return res.status(200).json({
+        message: 'Conversion restarted',
+        task_id: newTaskId,
+        old_task_id: taskId,
       });
     }
-
-    // Insert new record while keeping the old one
-    await sql`
-      INSERT INTO conversion_history (task_id, pdf_url, blob_url, status, api_version)
-      VALUES (${newTaskId}, ${pdfUrl}, ${pdfUrl}, 'processing', ${apiVersion})
-    `;
-
-    return res.status(200).json({
-      message: 'Conversion restarted',
-      task_id: newTaskId,
-      old_task_id: taskId,
-    });
   } catch (error) {
     console.error('Error rerunning conversion:', error);
     return res.status(500).json({
