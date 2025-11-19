@@ -52,11 +52,22 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
+    console.log('📊 Structura API response:', JSON.stringify(data, null, 2));
+
     if (!response.ok) {
       return res.status(response.status).json(data);
     }
 
-    const newTaskId = data.task_id;
+    // Structura returns task_id in the response
+    const newTaskId = data.task_id || data.request_id;
+
+    if (!newTaskId) {
+      console.error('No task_id in Structura response:', data);
+      return res.status(500).json({
+        error: 'Failed to get task ID from Structura API',
+        response: data
+      });
+    }
 
     // Insert new record while keeping the old one
     await sql`
