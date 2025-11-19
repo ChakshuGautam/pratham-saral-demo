@@ -36,16 +36,18 @@ export default async function handler(req, res) {
   try {
     const sql = neon(process.env.DATABASE_URL);
 
-    // Trigger new conversion with Structura API
+    // Trigger new conversion with Structura API using FormData
+    const formData = new FormData();
+    formData.append('pdf_url', pdfUrl);
+    formData.append('output_format', 'json');
+    formData.append('use_llm', 'true');
+
     const response = await fetch(`${STRUCTURA_BASE_URL}/api/v2/convert`, {
       method: 'POST',
       headers: {
         'X-Api-Key': STRUCTURA_API_KEY,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        file_url: pdfUrl,
-      }),
+      body: formData,
     });
 
     const data = await response.json();
@@ -56,20 +58,16 @@ export default async function handler(req, res) {
 
     const newTaskId = data.task_id;
 
-    // Update existing record with new task_id and reset status
+    // Insert new record while keeping the old one
     await sql`
-      UPDATE conversion_history
-      SET task_id = ${newTaskId},
-          status = 'processing',
-          result = NULL,
-          error = NULL,
-          updated_at = NOW()
-      WHERE task_id = ${taskId}
+      INSERT INTO conversion_history (task_id, pdf_url, blob_url, status)
+      VALUES (${newTaskId}, ${pdfUrl}, ${pdfUrl}, 'processing')
     `;
 
     return res.status(200).json({
       message: 'Conversion restarted',
       task_id: newTaskId,
+      old_task_id: taskId,
     });
   } catch (error) {
     console.error('Error rerunning conversion:', error);
