@@ -49,38 +49,6 @@ const HistoryPage: React.FC = () => {
     }
   };
 
-  const handleRerun = async (item: HistoryItem) => {
-    if (!confirm('Are you sure you want to rerun this conversion? This will discard the existing result.')) {
-      return;
-    }
-
-    try {
-      // Delete the existing record and trigger new conversion
-      const response = await fetch('/api/rerun', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          taskId: item.task_id,
-          pdfUrl: item.blob_url || item.pdf_url,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to rerun conversion');
-      }
-
-      // Refresh history
-      fetchHistory();
-      alert('Conversion restarted successfully!');
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to rerun conversion');
-    }
-  };
-
   const getStatusBadge = (status: string) => {
     const colors = {
       completed: 'bg-green-100 text-green-800',
