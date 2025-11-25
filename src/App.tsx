@@ -4,12 +4,13 @@ import ViewerPage from './ViewerPage';
 import UploadPage from './UploadPage';
 import HistoryPage from './HistoryPage';
 import ResultViewerPage from './ResultViewerPage';
+import TransformerIDEPage from './TransformerIDEPage';
 
 const NavBar: React.FC = () => {
   const location = useLocation();
 
-  // Hide nav bar on result pages
-  if (location.pathname.startsWith('/result/')) {
+  // Hide nav bar on result pages and IDE
+  if (location.pathname.startsWith('/result/') || location.pathname === '/ide') {
     return null;
   }
 
@@ -48,6 +49,16 @@ const NavBar: React.FC = () => {
         >
           Document Viewer
         </Link>
+        <Link
+          to="/ide"
+          className={`px-6 py-3 text-sm font-medium transition-colors ${
+            isActive('/ide')
+              ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+              : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+          }`}
+        >
+          Transformer IDE
+        </Link>
       </div>
     </nav>
   );
@@ -65,6 +76,7 @@ const App: React.FC = () => {
             <Route path="/upload" element={<UploadPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/result/:taskId" element={<ResultViewerPage />} />
+            <Route path="/ide" element={<TransformerIDEPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
