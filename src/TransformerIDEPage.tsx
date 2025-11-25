@@ -228,21 +228,21 @@ const TransformerIDEPage: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-900 text-white">
+    <div className="h-full flex flex-col bg-gray-50">
       {/* Header */}
-      <div className="flex-shrink-0 bg-gray-800 border-b border-gray-700 px-4 py-3">
+      <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Transformer IDE</h1>
+          <h1 className="text-xl font-bold text-gray-800">Transformer IDE</h1>
           <div className="flex gap-2">
             <button
               onClick={() => setActiveTab('transformers')}
-              className={`px-4 py-2 rounded ${activeTab === 'transformers' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+              className={`px-4 py-2 rounded font-medium text-sm ${activeTab === 'transformers' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
             >
               Transformers
             </button>
             <button
               onClick={() => setActiveTab('pipelines')}
-              className={`px-4 py-2 rounded ${activeTab === 'pipelines' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+              className={`px-4 py-2 rounded font-medium text-sm ${activeTab === 'pipelines' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
             >
               Pipelines
             </button>
@@ -252,19 +252,19 @@ const TransformerIDEPage: React.FC = () => {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
-        <div className="w-64 bg-gray-800 border-r border-gray-700 flex flex-col">
-          <div className="p-3 border-b border-gray-700">
+        <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
+          <div className="p-3 border-b border-gray-200">
             {activeTab === 'transformers' ? (
               <button
                 onClick={handleNewTransformer}
-                className="w-full bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm font-medium"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium"
               >
                 + New Transformer
               </button>
             ) : (
               <button
                 onClick={handleSavePipeline}
-                className="w-full bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm font-medium"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium"
               >
                 + New Pipeline
               </button>
@@ -277,32 +277,32 @@ const TransformerIDEPage: React.FC = () => {
                 <div
                   key={t.id}
                   onClick={() => handleSelectTransformer(t)}
-                  className={`p-3 border-b border-gray-700 cursor-pointer hover:bg-gray-700 ${
-                    selectedTransformer?.id === t.id ? 'bg-gray-700' : ''
+                  className={`p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-50 ${
+                    selectedTransformer?.id === t.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''
                   }`}
                 >
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">{t.name}</span>
+                    <span className="text-sm font-medium text-gray-800">{t.name}</span>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDeleteTransformer(t.id); }}
-                      className="text-red-400 hover:text-red-300 text-xs"
+                      className="text-red-500 hover:text-red-700 text-xs"
                     >
                       Delete
                     </button>
                   </div>
                   {t.description && (
-                    <p className="text-xs text-gray-400 mt-1 truncate">{t.description}</p>
+                    <p className="text-xs text-gray-500 mt-1 truncate">{t.description}</p>
                   )}
                 </div>
               ))
             ) : (
               pipelines.map(p => (
-                <div key={p.id} className="p-3 border-b border-gray-700">
+                <div key={p.id} className="p-3 border-b border-gray-200">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">{p.name}</span>
+                    <span className="text-sm font-medium text-gray-800">{p.name}</span>
                     <button
                       onClick={() => handleDeletePipeline(p.id)}
-                      className="text-red-400 hover:text-red-300 text-xs"
+                      className="text-red-500 hover:text-red-700 text-xs"
                     >
                       Delete
                     </button>
@@ -311,12 +311,12 @@ const TransformerIDEPage: React.FC = () => {
                     {p.transformer_ids?.map((tid, idx) => {
                       const t = transformers.find(tr => tr.id === tid);
                       return (
-                        <div key={idx} className="flex items-center text-xs bg-gray-700 rounded px-2 py-1">
-                          <span className="text-gray-400 mr-2">{idx + 1}.</span>
-                          <span className="flex-1">{t?.name || `Unknown (${tid})`}</span>
+                        <div key={idx} className="flex items-center text-xs bg-gray-100 rounded px-2 py-1">
+                          <span className="text-gray-500 mr-2">{idx + 1}.</span>
+                          <span className="flex-1 text-gray-700">{t?.name || `Unknown (${tid})`}</span>
                           <button
                             onClick={() => handleRemoveFromPipeline(p.id, idx)}
-                            className="text-red-400 hover:text-red-300 ml-2"
+                            className="text-red-500 hover:text-red-700 ml-2"
                           >
                             ×
                           </button>
@@ -330,7 +330,7 @@ const TransformerIDEPage: React.FC = () => {
                           e.target.value = '';
                         }
                       }}
-                      className="w-full bg-gray-600 text-xs rounded px-2 py-1 mt-2"
+                      className="w-full bg-gray-100 text-gray-700 text-xs rounded px-2 py-1 mt-2 border border-gray-300"
                       defaultValue=""
                     >
                       <option value="">+ Add transformer...</option>
@@ -349,32 +349,32 @@ const TransformerIDEPage: React.FC = () => {
         {activeTab === 'transformers' && (
           <div className="flex-1 flex flex-col">
             {/* Transformer Info */}
-            <div className="p-4 bg-gray-800 border-b border-gray-700 flex gap-4">
+            <div className="p-4 bg-white border-b border-gray-200 flex gap-4">
               <input
                 type="text"
                 placeholder="Transformer name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
+                className="flex-1 bg-white border border-gray-300 rounded px-3 py-2 text-sm text-gray-800"
               />
               <input
                 type="text"
                 placeholder="Description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
+                className="flex-1 bg-white border border-gray-300 rounded px-3 py-2 text-sm text-gray-800"
               />
               <button
                 onClick={handleSaveTransformer}
                 disabled={loading}
-                className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium disabled:opacity-50"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium disabled:opacity-50"
               >
                 {selectedTransformer ? 'Update' : 'Save'}
               </button>
             </div>
 
             {error && (
-              <div className="px-4 py-2 bg-red-900/50 text-red-300 text-sm">
+              <div className="px-4 py-2 bg-red-50 border-b border-red-200 text-red-600 text-sm">
                 {error}
               </div>
             )}
@@ -382,13 +382,13 @@ const TransformerIDEPage: React.FC = () => {
             {/* Editor */}
             <div className="flex-1 flex">
               <div className="flex-1 flex flex-col">
-                <div className="px-4 py-2 bg-gray-800 border-b border-gray-700 text-sm text-gray-400">
+                <div className="px-4 py-2 bg-gray-100 border-b border-gray-200 text-sm text-gray-600 font-medium">
                   Code Editor
                 </div>
                 <Editor
                   height="100%"
                   defaultLanguage="javascript"
-                  theme="vs-dark"
+                  theme="light"
                   value={code}
                   onChange={(value) => setCode(value || '')}
                   options={{
@@ -402,13 +402,13 @@ const TransformerIDEPage: React.FC = () => {
               </div>
 
               {/* Test Panel */}
-              <div className="w-96 border-l border-gray-700 flex flex-col">
-                <div className="px-4 py-2 bg-gray-800 border-b border-gray-700 flex justify-between items-center">
-                  <span className="text-sm text-gray-400">Test Input</span>
+              <div className="w-96 border-l border-gray-200 flex flex-col bg-white">
+                <div className="px-4 py-2 bg-gray-100 border-b border-gray-200 flex justify-between items-center">
+                  <span className="text-sm text-gray-600 font-medium">Test Input</span>
                   <button
                     onClick={handleTestCode}
                     disabled={loading}
-                    className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm font-medium disabled:opacity-50"
+                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm font-medium disabled:opacity-50"
                   >
                     Run Test
                   </button>
@@ -416,13 +416,13 @@ const TransformerIDEPage: React.FC = () => {
                 <textarea
                   value={testInput}
                   onChange={(e) => setTestInput(e.target.value)}
-                  className="flex-1 bg-gray-900 p-4 text-sm font-mono resize-none border-b border-gray-700"
+                  className="flex-1 bg-gray-50 p-4 text-sm font-mono resize-none border-b border-gray-200 text-gray-800"
                   placeholder="Enter test input (HTML or JSON)..."
                 />
-                <div className="px-4 py-2 bg-gray-800 border-b border-gray-700 text-sm text-gray-400">
+                <div className="px-4 py-2 bg-gray-100 border-b border-gray-200 text-sm text-gray-600 font-medium">
                   Output
                 </div>
-                <pre className="flex-1 bg-gray-900 p-4 text-sm font-mono overflow-auto text-green-400">
+                <pre className="flex-1 bg-gray-50 p-4 text-sm font-mono overflow-auto text-gray-800">
                   {testOutput || 'Run test to see output...'}
                 </pre>
               </div>
@@ -432,8 +432,8 @@ const TransformerIDEPage: React.FC = () => {
 
         {/* Pipelines Tab Content */}
         {activeTab === 'pipelines' && (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
-            <div className="text-center">
+          <div className="flex-1 flex items-center justify-center bg-white">
+            <div className="text-center text-gray-500">
               <p className="text-lg mb-2">Select a pipeline from the sidebar</p>
               <p className="text-sm">Add transformers to create a processing pipeline</p>
             </div>
