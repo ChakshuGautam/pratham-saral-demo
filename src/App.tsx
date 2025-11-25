@@ -9,8 +9,8 @@ import TransformerIDEPage from './TransformerIDEPage';
 const NavBar: React.FC = () => {
   const location = useLocation();
 
-  // Hide nav bar on result pages and IDE
-  if (location.pathname.startsWith('/result/') || location.pathname === '/ide') {
+  // Hide nav bar on result pages only
+  if (location.pathname.startsWith('/result/')) {
     return null;
   }
 
