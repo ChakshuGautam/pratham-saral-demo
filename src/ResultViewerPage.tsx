@@ -5,6 +5,13 @@ import StructuredContentRenderer from './components/StructuredContentRenderer';
 import ContinuousPdfViewer from './components/ContinuousPdfViewer';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 
+interface Pipeline {
+  id: number;
+  name: string;
+  description: string;
+  transformer_ids: number[];
+}
+
 const ResultViewerPage: React.FC = () => {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
@@ -15,11 +22,64 @@ const ResultViewerPage: React.FC = () => {
   const [selectedBboxId, setSelectedBboxId] = useState<string | null>(null);
   const [apiVersion, setApiVersion] = useState<string>('v2');
 
+  // Transformer state
+  const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const [selectedPipelineId, setSelectedPipelineId] = useState<number | null>(null);
+  const [transformedResult, setTransformedResult] = useState<any>(null);
+  const [transforming, setTransforming] = useState(false);
+  const [showTransformer, setShowTransformer] = useState(false);
+
   useEffect(() => {
     if (taskId) {
       fetchResult();
     }
+    fetchPipelines();
   }, [taskId]);
+
+  const fetchPipelines = async () => {
+    try {
+      const response = await fetch('/api/pipelines');
+      const data = await response.json();
+      setPipelines(data.pipelines || []);
+    } catch (err) {
+      console.error('Failed to fetch pipelines:', err);
+    }
+  };
+
+  const handleRunTransformer = async () => {
+    if (!selectedPipelineId || !result) return;
+
+    setTransforming(true);
+    try {
+      // For v3 API, pass the HTML content; for v2, pass the full result
+      const inputData = apiVersion === 'v3' && result.pages
+        ? result.pages.map((p: any) => p.html).join('\n')
+        : result;
+
+      const response = await fetch('/api/pipelines/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pipeline_id: selectedPipelineId,
+          input: inputData,
+          task_id: taskId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Transformation failed');
+      }
+
+      setTransformedResult(data);
+      setShowTransformer(true);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Transformation failed');
+    } finally {
+      setTransforming(false);
+    }
+  };
 
   const fetchResult = async () => {
     try {
@@ -124,18 +184,89 @@ const ResultViewerPage: React.FC = () => {
             <p className="text-sm text-gray-600">Task ID: {taskId?.slice(0, 16)}...</p>
           </div>
           {result && (
-            <button
-              onClick={handleDownloadJson}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              Download JSON
-            </button>
+            <div className="flex items-center gap-3">
+              {/* Transformer Controls */}
+              {pipelines.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <select
+                    value={selectedPipelineId || ''}
+                    onChange={(e) => setSelectedPipelineId(e.target.value ? parseInt(e.target.value) : null)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                  >
+                    <option value="">Select Pipeline...</option>
+                    {pipelines.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleRunTransformer}
+                    disabled={!selectedPipelineId || transforming}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {transforming ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Running...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Transform
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={handleDownloadJson}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download JSON
+              </button>
+            </div>
           )}
         </div>
       </div>
+
+      {/* Transformed Result Panel */}
+      {showTransformer && transformedResult && (
+        <div className="flex-shrink-0 bg-gray-800 text-white border-b border-gray-700">
+          <div className="px-6 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <h3 className="font-semibold">Transformed Output</h3>
+              {transformedResult.pipeline_name && (
+                <span className="text-xs bg-green-600 px-2 py-1 rounded">
+                  Pipeline: {transformedResult.pipeline_name}
+                </span>
+              )}
+              {transformedResult.steps && (
+                <span className="text-xs text-gray-400">
+                  {transformedResult.steps.length} step(s) • {transformedResult.steps.reduce((acc: number, s: any) => acc + s.duration_ms, 0)}ms
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => setShowTransformer(false)}
+              className="text-gray-400 hover:text-white"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="max-h-64 overflow-auto px-6 pb-4">
+            <pre className="text-sm font-mono text-green-400 whitespace-pre-wrap">
+              {JSON.stringify(transformedResult.output, null, 2)}
+            </pre>
+          </div>
+        </div>
+      )}
 
       {/* Side-by-Side View with Resizable Panels */}
       {pdfUrl && result ? (
