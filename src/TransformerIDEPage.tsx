@@ -47,6 +47,9 @@ const TransformerIDEPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'transformers' | 'pipelines'>('transformers');
+  const [pipelineName, setPipelineName] = useState('');
+  const [pipelineDescription, setPipelineDescription] = useState('');
+  const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null);
 
   useEffect(() => {
     fetchTransformers();
@@ -159,25 +162,50 @@ const TransformerIDEPage: React.FC = () => {
 
   // Pipeline management
   const handleSavePipeline = async () => {
-    const pipelineName = prompt('Enter pipeline name:');
-    if (!pipelineName) return;
+    if (!pipelineName.trim()) {
+      setError('Pipeline name is required');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
 
     try {
-      const response = await fetch('/api/pipelines', {
-        method: 'POST',
+      const url = selectedPipeline
+        ? `/api/pipelines/${selectedPipeline.id}`
+        : '/api/pipelines';
+      const method = selectedPipeline ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: pipelineName,
-          description: '',
-          transformer_ids: [],
+          description: pipelineDescription,
+          transformer_ids: selectedPipeline?.transformer_ids || [],
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to create pipeline');
+      if (!response.ok) throw new Error('Failed to save pipeline');
       await fetchPipelines();
+      handleNewPipeline();
     } catch (err) {
-      setError('Failed to create pipeline');
+      setError('Failed to save pipeline');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleNewPipeline = () => {
+    setSelectedPipeline(null);
+    setPipelineName('');
+    setPipelineDescription('');
+  };
+
+  const handleSelectPipeline = (pipeline: Pipeline) => {
+    setSelectedPipeline(pipeline);
+    setPipelineName(pipeline.name);
+    setPipelineDescription(pipeline.description || '');
   };
 
   const handleAddToPipeline = async (pipelineId: number, transformerId: number) => {
@@ -263,7 +291,7 @@ const TransformerIDEPage: React.FC = () => {
               </button>
             ) : (
               <button
-                onClick={handleSavePipeline}
+                onClick={handleNewPipeline}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium"
               >
                 + New Pipeline
@@ -297,47 +325,27 @@ const TransformerIDEPage: React.FC = () => {
               ))
             ) : (
               pipelines.map(p => (
-                <div key={p.id} className="p-3 border-b border-gray-200">
+                <div
+                  key={p.id}
+                  onClick={() => handleSelectPipeline(p)}
+                  className={`p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-50 ${
+                    selectedPipeline?.id === p.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''
+                  }`}
+                >
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-gray-800">{p.name}</span>
                     <button
-                      onClick={() => handleDeletePipeline(p.id)}
+                      onClick={(e) => { e.stopPropagation(); handleDeletePipeline(p.id); }}
                       className="text-red-500 hover:text-red-700 text-xs"
                     >
                       Delete
                     </button>
                   </div>
-                  <div className="mt-2 space-y-1">
-                    {p.transformer_ids?.map((tid, idx) => {
-                      const t = transformers.find(tr => tr.id === tid);
-                      return (
-                        <div key={idx} className="flex items-center text-xs bg-gray-100 rounded px-2 py-1">
-                          <span className="text-gray-500 mr-2">{idx + 1}.</span>
-                          <span className="flex-1 text-gray-700">{t?.name || `Unknown (${tid})`}</span>
-                          <button
-                            onClick={() => handleRemoveFromPipeline(p.id, idx)}
-                            className="text-red-500 hover:text-red-700 ml-2"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      );
-                    })}
-                    <select
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          handleAddToPipeline(p.id, parseInt(e.target.value));
-                          e.target.value = '';
-                        }
-                      }}
-                      className="w-full bg-gray-100 text-gray-700 text-xs rounded px-2 py-1 mt-2 border border-gray-300"
-                      defaultValue=""
-                    >
-                      <option value="">+ Add transformer...</option>
-                      {transformers.map(t => (
-                        <option key={t.id} value={t.id}>{t.name}</option>
-                      ))}
-                    </select>
+                  {p.description && (
+                    <p className="text-xs text-gray-500 mt-1 truncate">{p.description}</p>
+                  )}
+                  <div className="text-xs text-gray-400 mt-1">
+                    {p.transformer_ids?.length || 0} transformer(s)
                   </div>
                 </div>
               ))
@@ -432,10 +440,114 @@ const TransformerIDEPage: React.FC = () => {
 
         {/* Pipelines Tab Content */}
         {activeTab === 'pipelines' && (
-          <div className="flex-1 flex items-center justify-center bg-white">
-            <div className="text-center text-gray-500">
-              <p className="text-lg mb-2">Select a pipeline from the sidebar</p>
-              <p className="text-sm">Add transformers to create a processing pipeline</p>
+          <div className="flex-1 flex flex-col bg-white">
+            {/* Pipeline Form */}
+            <div className="p-4 bg-white border-b border-gray-200 flex gap-4">
+              <input
+                type="text"
+                placeholder="Pipeline name"
+                value={pipelineName}
+                onChange={(e) => setPipelineName(e.target.value)}
+                className="flex-1 bg-white border border-gray-300 rounded px-3 py-2 text-sm text-gray-800"
+              />
+              <input
+                type="text"
+                placeholder="Description"
+                value={pipelineDescription}
+                onChange={(e) => setPipelineDescription(e.target.value)}
+                className="flex-1 bg-white border border-gray-300 rounded px-3 py-2 text-sm text-gray-800"
+              />
+              <button
+                onClick={handleSavePipeline}
+                disabled={loading}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium disabled:opacity-50"
+              >
+                {selectedPipeline ? 'Update' : 'Create'}
+              </button>
+            </div>
+
+            {error && (
+              <div className="px-4 py-2 bg-red-50 border-b border-red-200 text-red-600 text-sm">
+                {error}
+              </div>
+            )}
+
+            {/* Pipeline Editor */}
+            <div className="flex-1 p-6 overflow-auto">
+              {selectedPipeline ? (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                    Transformer Chain
+                  </h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Add transformers to this pipeline. They will be executed in order.
+                  </p>
+
+                  {/* Current transformers in pipeline */}
+                  <div className="space-y-2 mb-6">
+                    {selectedPipeline.transformer_ids?.length > 0 ? (
+                      selectedPipeline.transformer_ids.map((tid, idx) => {
+                        const t = transformers.find(tr => tr.id === tid);
+                        return (
+                          <div key={idx} className="flex items-center bg-gray-50 border border-gray-200 rounded-lg p-3">
+                            <span className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium mr-3">
+                              {idx + 1}
+                            </span>
+                            <div className="flex-1">
+                              <span className="font-medium text-gray-800">{t?.name || `Unknown (${tid})`}</span>
+                              {t?.description && (
+                                <p className="text-xs text-gray-500">{t.description}</p>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleRemoveFromPipeline(selectedPipeline.id, idx)}
+                              className="text-red-500 hover:text-red-700 p-1"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="text-center py-8 text-gray-400 border-2 border-dashed border-gray-200 rounded-lg">
+                        No transformers added yet
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Add transformer dropdown */}
+                  <div className="flex gap-2">
+                    <select
+                      id="add-transformer-select"
+                      className="flex-1 bg-white border border-gray-300 rounded px-3 py-2 text-sm text-gray-800"
+                      defaultValue=""
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          handleAddToPipeline(selectedPipeline.id, parseInt(e.target.value));
+                          e.target.value = '';
+                        }
+                      }}
+                    >
+                      <option value="">Select a transformer to add...</option>
+                      {transformers.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center h-full">
+                  <div className="text-center text-gray-500">
+                    <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    <p className="text-lg mb-2">Create or select a pipeline</p>
+                    <p className="text-sm">Enter a name above and click Create, or select an existing pipeline from the sidebar</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
